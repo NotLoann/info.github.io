@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<link rel="icon" href="profile.png" type="image/png" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LoannDev</title>
+
+  <link href="https://fonts.cdnfonts.com/css/minecraftia" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <style>
+    * {
+      margin: 0; padding: 0; box-sizing: border-box;
+    }
+    html, body {
+      height: 100%;
+      width: 100%;
+      font-family: 'Minecraftia', sans-serif;
+      background: #000;
+      color: white;
+      overflow: hidden;
+      position: relative;
+      z-index: 0;
+      touch-action: none;
+    }
+
+    #particle-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 2;  /* <-- changé de -1 à 2 */
+  background: transparent; /* supprime le fond noir du canvas sinon il cache tout */
+  display: block;
+}
+
+.container {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid #00ffe7;
+  border-radius: 20px;
+  padding: 40px 30px;
+  text-align: center;
+  box-shadow: 0 0 25px #00ffe766;
+  animation: fadeInUp 1.5s ease forwards;
+  opacity: 1; /* on garde */
+  max-width: 340px;
+  width: 100%;
+  z-index: 1; /* inférieur à canvas */
+  user-select: none;
+}
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+      }
+    }
+    .container img {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 3px solid #00ffe7;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+    .quote {
+      font-size: 0.8rem;
+      color: #ccc;
+      margin-bottom: 20px;
+      height: 1rem;
+      min-height: 1rem;
+    }
+    .socials {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 10px;
+      position: relative;
+    }
+    .socials a {
+      color: white;
+      font-size: 38px;
+      text-decoration: none;
+      opacity: 0;
+      animation: fadeInScale 0.4s ease forwards;
+      transition: transform 0.2s ease, color 0.2s ease;
+    }
+    .socials a:hover {
+      color: #00ffe7;
+      transform: scale(1.3);
+    }
+    .socials a:nth-child(1) { animation-delay: 0.1s; }
+    .socials a:nth-child(2) { animation-delay: 0.3s; }
+    .socials a:nth-child(3) { animation-delay: 0.5s; }
+    @keyframes fadeInScale {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    #copy-msg {
+      position: absolute;
+      bottom: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #00ffe7;
+      color: #000;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-family: 'Minecraftia', sans-serif;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    #audio-control-btn {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: #00ffe7;
+      border: none;
+      border-radius: 8px;
+      width: 38px;
+      height: 38px;
+      cursor: pointer;
+      color: #000;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      user-select: none;
+      box-shadow: 0 0 10px #00ffe7aa;
+      transition: background-color 0.3s ease;
+    }
+    #audio-control-btn:hover {
+      background: #00cca3;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="particle-canvas"></canvas>
+
+  <button id="audio-control-btn" aria-label="Toggle Audio" title="Toggle Audio">
+    <i class="fas fa-volume-up"></i>
+  </button>
+
+  <div class="container">
+    <img src="profile.png" alt="Profile" />
+    <h1>LoannDev</h1>
+    <div class="quote" id="quote"></div>
+
+    <div class="socials">
+      <a href="https://youtube.com/@NotLoann?sub_confirmation=1" target="_blank" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+      <a href="https://github.com/NotLoann" target="_blank" aria-label="GitHub"><i class="fab fa-github"></i></a>
+      <a href="#" onclick="copyDiscord(event)" aria-label="Discord"><i class="fab fa-discord"></i></a>
+      <span id="copy-msg">Discord username copied!</span>
+    </div>
+  </div>
+
+  <audio id="background-audio" loop preload="auto" autoplay>
+    <source src="bgm.mp3" type="audio/mpeg" />
+    Your browser does not support the audio element.
+  </audio>
+
+  <script>
+    // Quotes typing effect
+    const quotes = [
+      "This website is work in progress.",
+      "i am french oui oui baguette",
+      "hello there",
+      "how did you find this website?",
+      "i am not a web developer don't blame me",
+      "minecraft > most recent games ngl",
+      "browser games are underrated",
+      "'im gonna touch you!!' - Bifurlo",
+      "i am not a furry",
+      "you can actually toggle music in the top left corner",
+    ];
+    const quoteElement = document.getElementById("quote");
+    function typeText(text, i = 0) {
+      if (i < text.length) {
+        quoteElement.textContent += text[i];
+        setTimeout(() => typeText(text, i + 1), 45);
+      }
+    }
+    const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+    typeText(randomQuote);
+
+    // Copy Discord tag to clipboard
+    function copyDiscord(event) {
+      event.preventDefault();
+      const discordTag = "notloann";
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(discordTag).then(() => {
+          showCopyMsg();
+        }).catch(err => {
+          fallbackCopyText(discordTag);
+        });
+      } else {
+        fallbackCopyText(discordTag);
+      }
+    }
+    function fallbackCopyText(text) {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showCopyMsg();
+      } catch (err) {
+        console.error("Fallback: Oops, unable to copy", err);
+      }
+      document.body.removeChild(textarea);
+    }
+    function showCopyMsg() {
+      const msg = document.getElementById("copy-msg");
+      msg.style.opacity = 1;
+      setTimeout(() => {
+        msg.style.opacity = 0;
+      }, 2000);
+    }
+
+    // Canvas particles setup
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width * devicePixelRatio;
+      canvas.height = height * devicePixelRatio;
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(devicePixelRatio, devicePixelRatio);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const container = document.querySelector('.container');
+    function getContainerRect() {
+      return container.getBoundingClientRect();
+    }
+
+    class Particle {
+      constructor() {
+        this.reset();
+      }
+      reset() {
+        const rect = getContainerRect();
+        // place particle outside container zone
+        do {
+          this.x = Math.random() * width;
+          this.y = Math.random() * height;
+        } while (
+          this.x > rect.left && this.x < rect.right &&
+          this.y > rect.top && this.y < rect.bottom
+        );
+        const speedFactor = 1.5;
+        this.vx = (Math.random() - 0.5) * speedFactor * 2;
+        this.vy = (Math.random() - 0.5) * speedFactor * 2;
+        this.size = Math.random() * 3 + 1.5;
+        this.alpha = Math.random() * 0.7 + 0.4;
+      }
+      update() {
+        const rect = getContainerRect();
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < 0) { this.x = 0; this.vx = -this.vx; }
+        else if (this.x > width) { this.x = width; this.vx = -this.vx; }
+        if (this.y < 0) { this.y = 0; this.vy = -this.vy; }
+        else if (this.y > height) { this.y = height; this.vy = -this.vy; }
+
+        // Keep particles outside container box
+        if (this.x > rect.left && this.x < rect.right && this.y > rect.top && this.y < rect.bottom) {
+          if (this.x > (rect.left + rect.right) / 2) this.x = rect.right + this.size;
+          else this.x = rect.left - this.size;
+          if (this.y > (rect.top + rect.bottom) / 2) this.y = rect.bottom + this.size;
+          else this.y = rect.top - this.size;
+          if (Math.abs(this.vx) > Math.abs(this.vy)) this.vx = -this.vx;
+          else this.vy = -this.vy;
+        }
+      }
+      draw(ctx) {
+        ctx.beginPath();
+        // Correct rgba string with alpha interpolation
+        const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+        gradient.addColorStop(0, `rgba(0, 255, 231, ${this.alpha})`);
+        gradient.addColorStop(1, 'rgba(0, 255, 231, 0)');
+        ctx.fillStyle = gradient;
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    const particlesCount = 150;
+    const particles = [];
+    for(let i = 0; i < particlesCount; i++) {
+      particles.push(new Particle());
+    }
+
+    // === Particules souris ===
+    const mouseParticles = [];
+
+    class MouseParticle {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.size = Math.random() * 4 + 2;
+        this.vx = (Math.random() - 0.5) * 2;
+        this.vy = (Math.random() - 0.5) * 2;
+        this.life = 30 + Math.random() * 20;  // durée de vie en frames
+        this.alpha = 1;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life--;
+        this.alpha = this.life / 50;
+      }
+      draw(ctx) {
+        ctx.beginPath();
+        const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+        gradient.addColorStop(0, `rgba(0, 255, 231, ${this.alpha})`);
+        gradient.addColorStop(1, 'rgba(0, 255, 231, 0)');
+        ctx.fillStyle = gradient;
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    window.addEventListener('mousemove', (e) => {
+      for(let i = 0; i < 0; i++) {
+        mouseParticles.push(new MouseParticle(e.clientX, e.clientY));
+      }
+    });
+
+    function animate() {
+      ctx.clearRect(0, 0, width, height);
+
+      for (const p of particles) {
+        p.update();
+        p.draw(ctx);
+      }
+
+      for (let i = mouseParticles.length - 1; i >= 0; i--) {
+        const mp = mouseParticles[i];
+        mp.update();
+        if (mp.life <= 0) {
+          mouseParticles.splice(i, 1);
+        } else {
+          mp.draw(ctx);
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+    animate();
+
+    // Audio autoplay workaround & control button
+    const audio = document.getElementById('background-audio');
+    const audioBtn = document.getElementById('audio-control-btn');
+    let isPlaying = false;
+
+    async function tryPlayAudio() {
+      try {
+        await audio.play();
+        isPlaying = true;
+        audioBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+      } catch(e) {
+        isPlaying = false;
+        audioBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+      }
+    }
+
+    tryPlayAudio();
+
+    audioBtn.addEventListener('click', () => {
+      if (isPlaying) {
+        audio.pause();
+        isPlaying = false;
+        audioBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+      } else {
+        audio.play().then(() => {
+          isPlaying = true;
+          audioBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+        }).catch(() => {
+          isPlaying = false;
+          audioBtn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+        });
+      }
+    });
+  </script>
+
+</body>
+</html>
